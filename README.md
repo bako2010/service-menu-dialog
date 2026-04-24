@@ -1,5 +1,5 @@
 # service-menu-dialog
-It's a script written in Dialog to check your SystemServices
+It's a script written in Bash for Dialog to check your SystemServices
 
 to download:
 
