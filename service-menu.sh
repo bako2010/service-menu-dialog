@@ -62,7 +62,7 @@ while true; do
     header=$(printf " %-4s | %-35s | %-20s | %-12s | %-18s | %-12s | %-7s" "NR" "SERVICE-NAME" "PATH" "OWNER" "STATE" "ACTIVE" "RAM")
     divider=$(printf '%.s-' {1..165})
     
-    legend="PFADE:      /etc/sys/sys (Admin) | /lib/sys/sys (System)
+    legend="written by -- KingKon --
 STATE:      enabled (Auto), disabled (Manuell), static (Abhaeng.), masked (Gesperrt)
 ACTIVE:     active (laeuft), inactive (aus), failed (Fehler)
 OWNER/RAM:  Besitzer des Dienstes | Aktueller Arbeitsspeicherverbrauch in MB"
