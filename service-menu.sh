@@ -146,9 +146,10 @@ ACTIVE: active (laeuft), inactive (aus), failed (Fehler)"
             ACTION_TMP=$(mktemp)
             dialog --backtitle "Management: $selection" \
                    --title " Aktion waehlen " \
-                   --menu "Voller Pfad: $full_path_info\n\nWas moechtest du tun?" 22 80 8 \
+                   --menu "Voller Pfad: $full_path_info\n\nWas moechtest du tun?" 22 80 9 \
                    "Status"   "Infos anzeigen (systemctl status)" \
                    "Logs"     "Die letzten 50 Journal-Einträge" \
+                   "Edit"     "Service-Datei direkt editieren" \
                    "Start"    "Dienst jetzt starten" \
                    "Stop"     "Dienst anhalten" \
                    "Enable"   "Auto-Start aktivieren" \
@@ -164,6 +165,27 @@ ACTIVE: active (laeuft), inactive (aus), failed (Fehler)"
                         ;;
                     Logs)   
                         journalctl -u "$selection" -n 50 --no-hostname --no-pager
+                        ;;
+                    Edit)
+                        if [ -z "$full_path_info" ] || [ "$full_path_info" = "N/A" ] || [ ! -f "$full_path_info" ]; then
+                            echo "Fehler: Die Service-Datei existiert nicht oder ist dynamisch generiert."
+                        else
+                            # Ermitteln des Standard-Editors (nano als sicherer Fallback)
+                            EDITOR_BIN=${VISUAL:-${EDITOR:-nano}}
+                            echo "Öffne $full_path_info mit $EDITOR_BIN..."
+                            
+                            # Wenn die Datei im Systemverzeichnis liegt, mit sudo öffnen
+                            if [[ "$full_path_info" == /etc/* || "$full_path_info" == /lib/* || "$full_path_info" == /usr/* ]]; then
+                                sudo "$EDITOR_BIN" "$full_path_info"
+                            else
+                                "$EDITOR_BIN" "$full_path_info"
+                            fi
+                            
+                            # Nach dem Bearbeiten systemd mitteilen, dass sich Konfigurationen geändert haben könnten
+                            echo "Lade Systemd-Daemon neu (daemon-reload)..."
+                            sudo systemctl daemon-reload
+                            echo "Erledigt!"
+                        fi
                         ;;
                     Start)  
                         echo "Starte $selection..." && sudo systemctl start "$selection" 
