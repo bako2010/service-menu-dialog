@@ -32,52 +32,76 @@ while true; do
     GLOBAL_TEMP=$(mktemp)
     SEL_TMP=$(mktemp)
     
-    # Massen-Abfrage aller benötigten Systemd-Eigenschaften (Extrem schnell!)
-    systemctl show --type=service --property=Id,LoadState,ActiveState,User,MemoryCurrent,FragmentPath --value "*" > "$GLOBAL_TEMP"
+    # Holen der Daten im exakten "Schlüssel=Wert" Format
+    systemctl show --type=service --property=Id,LoadState,ActiveState,User,MemoryCurrent,FragmentPath "*" > "$GLOBAL_TEMP"
 
     menu_options=()
     declare -A service_map
     count=1
 
-    # Variablen für den Parser blockweise einlesen
-    while read -r id && read -r load_state && read -r active_state && read -r user && read -r mem_bytes && read -r full_path; do
-        [ -z "$id" ] && continue
-        [[ "$id" == *@ ]] && continue
+    # Variablen sauber initialisieren
+    id="" load_state="" active_state="" user="" mem_bytes="" full_path=""
 
-        # Filter-Logik (Greift im Speicher)
-        if [ -n "$search_term" ]; then
-            if ! echo "$id" | grep -iq "$search_term"; then
-                continue
-            fi
-        fi
+    # Robuster Key-Value-Parser für systemctl show
+    while IFS='=' read -r key val; do
+        case "$key" in
+            Id) id="$val" ;;
+            LoadState) load_state="$val" ;;
+            ActiveState) active_state="$val" ;;
+            User) user="$val" ;;
+            MemoryCurrent) mem_bytes="$val" ;;
+            FragmentPath) 
+                full_path="$val" 
+                
+                # FragmentPath ist die letzte Eigenschaft pro Service-Block -> Jetzt verarbeiten!
+                if [ -n "$id" ] && [[ "$id" != *@ ]]; then
+                    
+                    # Filter-Logik (Greift im Speicher)
+                    if [ -n "$search_term" ] && ! echo "$id" | grep -iq "$search_term"; then
+                        id=""; continue
+                    fi
 
-        # Defaults setzen
-        [ -z "$user" ] && user="root"
-        [ -z "$full_path" ] && full_path="N/A"
+                    # Defaults setzen
+                    [ -z "$user" ] && user="root"
+                    [ -z "$full_path" ] || [ "$full_path" = "N/A" ] && full_path="N/A"
 
-        # Pfad-Anzeige einkürzen
-        short_path=$(dirname "$full_path" 2>/dev/null | sed 's|/lib/systemd/system|/lib/sys/sys|;s|/etc/systemd/system|/etc/sys/sys|')
+                    # Pfad-Anzeige einkürzen
+                    if [ "$full_path" != "N/A" ]; then
+                        short_path=$(dirname "$full_path" 2>/dev/null | sed 's|/lib/systemd/system|/lib/sys/sys|;s|/etc/systemd/system|/etc/sys/sys|')
+                    else
+                        short_path="N/A"
+                    fi
 
-        # RAM Umrechnung (Byte zu MB)
-        if [[ -z "$mem_bytes" || "$mem_bytes" == "[not set]" || "$mem_bytes" == "0" ]]; then
-            mem_mb="0"
-        else
-            mem_mb=$(( mem_bytes / 1024 / 1024 ))
-        fi
+                    # RAM Umrechnung (Byte zu MB) SAFELY
+                    if [[ -z "$mem_bytes" || "$mem_bytes" == "[not set]" || "$mem_bytes" == "0" || ! "$mem_bytes" =~ ^[0-9]+$ ]]; then
+                        mem_mb="0"
+                    else
+                        mem_mb=$(( mem_bytes / 1024 / 1024 ))
+                    fi
 
-        # Textbeschneidung für absolute Spaltentreue
-        name_trunc=$(printf "%.35s" "$id")
-        path_trunc=$(printf "%.20s" "$short_path")
-        user_trunc=$(printf "%.12s" "$user")
+                    # Textbeschneidung für absolute Spaltentreue
+                    name_trunc=$(printf "%.35s" "$id")
+                    path_trunc=$(printf "%.20s" "$short_path")
+                    user_trunc=$(printf "%.12s" "$user")
 
-        # Formatierung für das dialog-Menü
-        display_name=$(printf "%-35s | %-20s | %-12s | %-12s | %-10s | %6s MB" \
-                      "$name_trunc" "$path_trunc" "$user_trunc" "$load_state" "$active_state" "$mem_mb")
+                    # Formatierung für das dialog-Menü
+                    display_name=$(printf "%-35s | %-20s | %-12s | %-12s | %-10s | %6s MB" \
+                                  "$name_trunc" "$path_trunc" "$user_trunc" "$load_state" "$active_state" "$mem_mb")
 
-        menu_options+=("$count" "$display_name")
-        service_map[$count]="$id"
-        ((count++))
+                    menu_options+=("$count" "$display_name")
+                    service_map[$count]="$id"
+                    ((count++))
+                fi
+                # Reset für den nächsten Block
+                id="" load_state="" active_state="" user="" mem_bytes="" full_path=""
+                ;;
+        esac
     done < "$GLOBAL_TEMP"
+
+    # Falls keine Services gefunden wurden
+    if [ ${#menu_options[@]} -eq 0 ]; then
+        menu_options+=("1" "Keine Dienste gefunden (Filter prüfen)")
+    fi
 
     # Header und Divider
     header=$(printf " %-4s | %-35s | %-20s | %-12s | %-12s | %-10s | %-7s" "NR" "SERVICE-NAME" "PATH" "OWNER" "STATE" "ACTIVE" "RAM")
@@ -115,6 +139,8 @@ ACTIVE: active (laeuft), inactive (aus), failed (Fehler)"
         0) # Auswählen
             [ -z "$selection_raw" ] && continue
             selection=${service_map[$selection_raw]}
+            [ -z "$selection" ] && continue
+            
             full_path_info=$(systemctl show "$selection" --property=FragmentPath --value 2>/dev/null)
 
             ACTION_TMP=$(mktemp)
