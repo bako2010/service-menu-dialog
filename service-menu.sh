@@ -154,10 +154,10 @@ while true; do
     (( DIALOG_HEIGHT < 20 )) && DIALOG_HEIGHT=20
 
     dialog --backtitle "-- Systemd -- Service Menu by KingKon(Bako2010)" \
-           --title " Service Uebersicht " \
-           --ok-label "Auswaehlen" \
-           --extra-button --extra-label "Suche" \
-           --cancel-label "Beenden" \
+           --title " Service overview " \
+           --ok-label "Select" \
+           --extra-button --extra-label "Search" \
+           --cancel-label "Done" \
            --menu "$header\n$divider\n$legend\n$divider" "$DIALOG_HEIGHT" "$DIALOG_WIDTH" 12 \
            "${menu_options[@]}" 2> "$SEL_TMP"
 
