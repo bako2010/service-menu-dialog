@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Systemd Manager Pro Ultra V2 (Revised & Hardened)
+# Systemd Manager Pro Ultra V2 (by Bako2010 KingKon)
 # Features: Distro-agnostic, dynamic UI, safe RAM parsing, systemctl edit, fast bash-native filter
 set -o pipefail
 
