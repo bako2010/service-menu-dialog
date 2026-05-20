@@ -153,7 +153,7 @@ while true; do
     (( DIALOG_WIDTH < 80 )) && DIALOG_WIDTH=80
     (( DIALOG_HEIGHT < 20 )) && DIALOG_HEIGHT=20
 
-    dialog --backtitle "Systemd Manager Pro Ultra V2 by KingKon(Bako2010)$title_info" \
+    dialog --backtitle "Systemd Manager Pro Ultra V2 by KingKon(Bako2010)" \
            --title " Service Uebersicht " \
            --ok-label "Auswaehlen" \
            --extra-button --extra-label "Suche" \
